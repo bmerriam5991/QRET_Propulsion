@@ -1,0 +1,77 @@
+
+#include <SD.h>
+#include <SD_t3.h>
+#include <HX711.h>
+
+#define LOAD_DOUT 2
+#define LOAD_SCK 3
+#define TRANSDUCER_PIN 23
+
+#define LOAD_CELL_CALIBRATION -208000
+#define RECORD_DATA true
+#define PRINT_DATA false
+
+HX711 loadCell;
+File file;
+unsigned long startTime;
+
+void setup() {
+  Serial.begin(9600);
+  loadCell.begin(LOAD_DOUT, LOAD_SCK);
+  loadCell.set_scale(LOAD_CELL_CALIBRATION);
+  loadCell.tare();
+
+  if (RECORD_DATA) {
+    if (!SD.begin(BUILTIN_SDCARD)) {
+      Serial.println("SD card not found");
+      while (true) {}
+    }
+  
+    int n = 0;
+  
+    while (SD.exists(String("log"+String(n)+".txt").c_str())) {
+      n++;
+    }
+  
+    file = SD.open(String("log"+String(n)+".txt").c_str(), FILE_WRITE);
+    file.println("Time (ms)\tThrust (kg)\tAbsolute Pressure (Bar)");
+  }
+
+  startTime = millis();
+}
+
+void loop() {
+   if (RECORD_DATA) {
+    recordData();
+   }
+   if (PRINT_DATA) {
+    printData();
+   }
+}
+
+float readLoadCell() {
+  return (float)loadCell.get_units(1);
+  return 0;
+}
+
+float readPressure() {
+  //return (analogRead(TRANSDUCER_PIN)-62)/1024.0*3.3*(6.895/1.8);
+  return 0;
+}
+
+void printData() {
+  Serial.print(millis()-startTime);
+  Serial.print("\t");
+  Serial.print(readLoadCell());
+  Serial.print("\t");
+  Serial.println(readPressure());
+}
+
+void recordData() {
+  file.print(millis()-startTime);
+  file.print("\t");
+  file.print(readLoadCell());
+  file.print("\t");
+  file.println(readPressure());
+  file.flush();
+}
